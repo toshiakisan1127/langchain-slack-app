@@ -2,9 +2,11 @@ import os
 import re
 import time
 import logging
+import json
 from typing import Any
 from dotenv import load_dotenv
 from slack_bolt import App
+from slack_bolt.adapter.aws_lambda import SlackRequestHandler
 from slack_bolt.adapter.socket_mode import SocketModeHandler
 from langchain_openai import ChatOpenAI
 from langchain.callbacks.base import BaseCallbackHandler
@@ -15,8 +17,25 @@ from langchain.memory import MomentoChatMessageHistory
 from langchain.schema import HumanMessage, LLMResult, SystemMessage
 
 load_dotenv()
+SlackRequestHandler.clear_all_log_handlers()
+logging.basicConfig(
+    format="%(asctime)s [%(levelname)s] %(message)s", level=logging.INFO)
 logger = logging.getLogger(__name__)
 
+
+def handler(event, context):
+    logger.info("handler called")
+    header = event["headers"]
+    logger.info(json.dumps(header))
+
+    if "x-slack-retry-num" in header:
+        logger.info("SKIP > x-slack-retry-num: %s",
+                    header["x-slack-retry-num"])
+        return 200
+
+    # AWS Lambda環境のリクエスト情報を app が処理できるように変換してくれるアダプター
+    slack_handler = SlackRequestHandler(app=app)
+    return slack_handler.handle(event, context)
 
 def just_ack(ack):
     ack()
