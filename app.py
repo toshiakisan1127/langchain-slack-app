@@ -17,17 +17,10 @@ from langchain.schema import HumanMessage, LLMResult, SystemMessage
 load_dotenv()
 logger = logging.getLogger(__name__)
 
-app = App(
-    signing_secret=os.environ.get("SLACK_SIGNING_SECRET"),
-    token=os.environ.get("SLACK_BOT_TOKEN"),
-    process_before_response=True
-)
 
-# ボットトークンとソケットモードハンドラーを使ってアプリを初期化する
-app = App(token=os.environ.get("SLACK_BOT_TOKEN"))
+def just_ack(ack):
+    ack()
 
-
-@app.event("app_mention")
 def handler_mention(event, say):
     channel = event["channel"]
     thread_ts = event["ts"]
@@ -64,6 +57,14 @@ def handler_mention(event, say):
     ai_message = llm(messages)
     history.add_message(ai_message)
 
+
+# ボットトークンとソケットモードハンドラーを使ってアプリを初期化する
+app = App(
+    signing_secret=os.environ.get("SLACK_SIGNING_SECRET"),
+    token=os.environ.get("SLACK_BOT_TOKEN"),
+    process_before_response=True
+)
+app.event("app_mention")(ack=just_ack, lazy=[handler_mention])
 
 # ソケットモードハンドラーを使ってアプリを起動
 if __name__ == "__main__":
